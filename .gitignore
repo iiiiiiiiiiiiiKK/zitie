@@ -6,3 +6,6 @@ node_modules/
 
 # 系统
 .DS_Store
+
+# wrangler 本地状态
+.wrangler/
