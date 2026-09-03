@@ -1,6 +1,6 @@
-# 字帖生成器 · 通用规范汉字表
+# KK 字帖
 
-# https://zitie-acd.pages.dev
+> 在线体验：**https://zitie-acd.pages.dev/** &nbsp;·&nbsp; 自动部署 ![deploy](https://github.com/iiiiiiiiiiiiiKK/zitie/actions/workflows/deploy.yml/badge.svg)
 
 零构建、可离线使用的汉字字帖（描红 / 临写）生成器，基于《通用规范汉字表（2013）》7909 个标准汉字。
 
@@ -39,6 +39,13 @@ python3 -m http.server 8000
 ## 技术
 
 纯静态单页应用：HTML + 原生 JS，无框架、无构建步骤。
+
+## 部署
+
+站点托管于 **Cloudflare Pages**，源为 GitHub 仓库。自动化流程：`.github/workflows/deploy.yml` 在每次向 `main` 推送时，通过 `wrangler pages deploy` 自动上线（凭据存于仓库 Actions secrets，无需本地操作）。
+
+- 在线地址：`https://zitie-acd.pages.dev/`
+- 部署状态：见仓库顶部的 deploy 徽章
 
 ## License
 
