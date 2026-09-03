@@ -1,0 +1,8 @@
+# 依赖
+node_modules/
+
+# 本地截图 / 预览产物
+*.png
+
+# 系统
+.DS_Store

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>字帖生成器 · 通用规范汉字表</title>
+<style>
+  :root{
+    --paper:#fffdf6; --ink:#23211c; --line:#c9d3e0; --chrome:#f4f6f9;
+    --panel:#ffffff; --border:#dbe1ea; --muted:#8a93a3; --accent:#3b6ea5;
+    --radius:12px; --fs:46px;
+    --kai:"Kaiti SC","STKaiti","KaiTi","楷体","Songti SC",serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--chrome);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .app{max-width:1120px;margin:0 auto;padding:12px 12px 48px;}
+  header.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .brand{font-size:18px;font-weight:800;letter-spacing:.5px;}
+  .brand .logo{margin-right:6px;}
+  .sub{font-size:12px;color:var(--muted);}
+
+  .controls{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+  .row-c{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .grp-label{font-size:11.5px;font-weight:700;color:var(--muted);min-width:44px;}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg button{appearance:none;border:1px solid var(--border);background:var(--chrome);color:var(--ink);
+    font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:9px;cursor:pointer;transition:.12s;}
+  .seg button:active{transform:scale(.97);}
+  .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn{appearance:none;border:0;border-radius:10px;padding:9px 15px;font-size:13px;font-weight:700;
+    background:var(--accent);color:#fff;cursor:pointer;transition:.12s;}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:var(--chrome);border:1px solid var(--border);color:var(--ink);}
+  .btn.sm{padding:7px 11px;font-size:12.5px;}
+  textarea,input[type=text],input[type=number]{font-family:inherit;font-size:14px;color:var(--ink);
+    background:var(--chrome);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none;}
+  textarea:focus,input:focus{border-color:var(--accent);}
+  #customWrap{display:none;width:100%;}
+  textarea{width:100%;min-height:60px;resize:vertical;}
+  .inline{display:flex;gap:8px;align-items:center;}
+  input[type=range]{accent-color:var(--accent);}
+  .val{font-size:13px;color:var(--accent);font-weight:700;min-width:42px;}
+
+  /* ---------- 字帖纸（每页一张） ---------- */
+  .preview{overflow:auto;background:#e7ebf1;border-radius:var(--radius);padding:18px;
+    display:flex;justify-content:center;}
+  .sheets{display:flex;flex-direction:column;gap:20px;align-items:center;}
+  .sheet{background:var(--paper);border:1px solid #e3ddc9;box-shadow:0 6px 24px rgba(0,0,0,.08);
+    width:210mm;max-width:100%;padding:14mm 12mm;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+  .sheet.land{width:297mm;}
+  .sheet-head{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:12px;}
+  .sheet-title{font-family:var(--kai);font-size:22px;font-weight:800;}
+  .sheet-meta{font-size:12px;color:var(--muted);}
+  .row{display:grid;grid-template-columns:repeat(var(--cols),1fr);break-inside:avoid;}
+  .cell{position:relative;aspect-ratio:1/1;border:1px solid var(--line);container-type:size;
+    background-repeat:no-repeat;background-position:center;background-size:100% 100%;
+    display:flex;align-items:center;justify-content:center;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+  .cell .char{font-family:var(--kai);font-size:min(var(--fs),92cqmin);line-height:1;color:var(--ink);user-select:none;}
+  .cell.trace .char{color:#e79a9a;}
+  .cell.ink .char{color:var(--ink);}
+  .cell .py{position:absolute;bottom:5%;left:0;right:0;text-align:center;
+    font-size:min(calc(var(--fs)*0.2),18cqmin);color:#bcb4a1;font-family:-apple-system,"PingFang SC",sans-serif;
+    pointer-events:none;user-select:none;}
+  .cell.click{cursor:pointer;}
+
+  /* ---------- 笔顺弹窗 ---------- */
+  .mask{position:fixed;inset:0;background:rgba(20,22,28,.55);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;padding:20px;z-index:60;}
+  .mask.show{display:flex;}
+  .modal{background:#fff;border-radius:18px;max-width:340px;width:100%;padding:18px;text-align:center;
+    animation:pop .18s ease;}
+  @keyframes pop{from{transform:translateY(10px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  .modal h3{margin:0 0 10px;font-family:var(--kai);font-size:22px;}
+  #hwTarget{width:260px;height:260px;margin:0 auto;display:flex;align-items:center;justify-content:center;}
+  .modal .mbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+  .stat{font-size:12px;color:var(--muted);margin:2px 2px 0;}
+
+  @media (max-width:760px){
+    .app{padding:10px 8px 48px;}
+    header.top{margin-bottom:10px;}
+    .sub{font-size:11px;}
+    .controls{padding:10px;gap:10px;}
+    .row-c{gap:8px;align-items:stretch;}
+    .grp-label{min-width:0;margin:2px 0 0;font-size:11px;}
+    .seg{width:100%;flex:1 1 100%;}
+    .seg button{padding:11px 8px;font-size:13px;min-height:42px;flex:1 1 auto;}
+    .inline{flex-wrap:wrap;align-items:stretch;}
+    #randN{flex:1 1 90px;min-width:0;width:auto!important;}
+    #randBtn{flex:0 0 auto;}
+    #randHint{flex:1 1 100%;font-size:11px;margin-top:2px;}
+    #fsRange{width:100%!important;}
+    #titleInput{width:100%!important;}
+    #strokeMin,#strokeMax{width:64px!important;}
+    .preview{padding:8px;}
+    .sheet{padding:10mm 8mm;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .controls,.top{display:none!important;}
+    .preview{display:block;background:#fff;padding:0;overflow:visible;}
+    .app{padding:0;max-width:none;}
+    .sheets{gap:0;align-items:stretch;}
+    .sheet{box-shadow:none;border:0;width:210mm;margin:0 auto;break-after:page;}
+    .sheet.land{width:297mm;}
+    .mask{display:none!important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="logo">✍️</span>字帖生成器</div>
+    <div class="sub">通用规范汉字表（2013）· 7909 字 · 离线可用 · 一键打印 / 导出图片</div>
+  </header>
+
+  <div class="controls">
+    <div class="row-c">
+      <span class="grp-label">选字来源</span>
+      <div class="seg" id="srcSeg">
+        <button data-val="level1" class="active">一级字表 3500</button>
+        <button data-val="level2">二级字表 3000</button>
+        <button data-val="level3">三级字表 1605</button>
+        <button data-val="all">全部 7909</button>
+        <button data-val="custom">自定义文本</button>
+      </div>
+      <div class="inline">
+        <span class="grp-label">随机抽</span>
+        <input type="number" id="randN" value="20" min="1" style="width:84px" placeholder="字数" />
+        <button class="btn sm ghost" id="randBtn">抽字</button>
+        <span class="sub" id="randHint">从来源中按输入字数随机抽取</span>
+      </div>
+    </div>
+
+    <div id="customWrap">
+      <textarea id="customText" placeholder="粘贴任意文本（如古诗、课文、名字），自动提取其中汉字去重"></textarea>
+      <div class="row-c" style="margin-top:8px">
+        <button class="btn sm" id="customApply">应用到字帖</button>
+        <span class="sub">提示：自定义文本独立于上方级别，应用后即以这些字生成</span>
+      </div>
+    </div>
+
+    <div class="row-c">
+      <span class="grp-label">格子</span>
+      <div class="seg" id="gridSeg">
+        <button data-val="tian" class="active">田字格</button>
+        <button data-val="mi">米字格</button>
+        <button data-val="blank">空白格</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">模式</span>
+      <div class="seg" id="modeSeg">
+        <button data-val="model">临写（首字示范）</button>
+        <button data-val="trace" class="active">描红（淡红可描）</button>
+        <button data-val="blank">空临（全留白）</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">字体</span>
+      <div class="seg" id="fontSeg">
+        <button data-val="kai" class="active">楷书</button>
+        <button data-val="xing">行楷</button>
+        <button data-val="li">隶书</button>
+        <button data-val="song">宋体</button>
+        <button data-val="hei">黑体</button>
+      </div>
+    </div>
+
+    <div class="row-c">
+      <span class="grp-label">每行</span>
+      <div class="seg" id="colsSeg">
+        <button data-val="6">6</button>
+        <button data-val="8">8</button>
+        <button data-val="9">9</button>
+        <button data-val="10" class="active">10</button>
+        <button data-val="12">12</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">每字重复</span>
+      <div class="seg" id="repSeg">
+        <button data-val="1">1</button>
+        <button data-val="2" class="active">2</button>
+        <button data-val="3">3</button>
+        <button data-val="4">4</button>
+        <button data-val="5">5</button>
+        <button data-val="6">6</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">拼音</span>
+      <div class="seg" id="pySeg">
+        <button data-val="on" class="active">显示</button>
+        <button data-val="off">隐藏</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">笔画筛选</span>
+      <input type="number" id="strokeMin" min="1" max="60" placeholder="最小" style="width:60px" />
+      <span class="sub">—</span>
+      <input type="number" id="strokeMax" min="1" max="60" placeholder="最大" style="width:60px" />
+      <button class="btn sm ghost" id="strokeClear">清除</button>
+    </div>
+
+    <div class="row-c">
+      <span class="grp-label">字号</span>
+      <input type="range" id="fsRange" min="28" max="72" value="60" style="width:180px" />
+      <span class="val" id="fsVal">60px</span>
+      <span class="grp-label" style="margin-left:8px">纸张</span>
+      <div class="seg" id="paperSeg">
+        <button data-val="portrait">A4 竖</button>
+        <button data-val="landscape" class="active">A4 横</button>
+      </div>
+      <span class="grp-label" style="margin-left:8px">标题</span>
+      <input type="text" id="titleInput" value="KK 字帖" style="width:220px" />
+    </div>
+
+    <div class="row-c">
+      <button class="btn" id="printBtn">🖨️ 打印 / 导出 PDF</button>
+      <button class="btn ghost" id="resetBtn">重置</button>
+      <span class="stat" id="stat"></span>
+      <span class="grp-label" style="margin-left:auto">导出</span>
+      <button class="btn sm" id="saveImg">🖼️ 保存图片</button>
+      <button class="btn sm ghost" id="saveZip">🗜️ 批量 ZIP</button>
+      <span class="stat" id="expStat"></span>
+    </div>
+  </div>
+
+  <div class="preview">
+    <div class="sheets" id="sheets"></div>
+  </div>
+</div>
+
+<!-- 笔顺演示弹窗 -->
+<div class="mask" id="strokeMask">
+  <div class="modal">
+    <h3 id="strokeTitle">笔顺</h3>
+    <div id="hwTarget"></div>
+    <div class="mbtns">
+      <button class="btn sm" id="hwPlay">▶ 播放</button>
+      <button class="btn sm ghost" id="hwLoop">↻ 循环</button>
+      <button class="btn sm ghost" id="hwClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 格线背景（运行时注入，仅需编码一次） -->
+<style id="gridStyle"></style>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  'use strict';
+  var D = window.ZITIE_DATA || {level1:'',level2:'',level3:'',all:''};
+  var FONTS={
+    kai:'"Kaiti SC","STKaiti","KaiTi","楷体","Songti SC",serif',
+    xing:'"Xingkai SC","STXingkai","行楷","Kaiti SC",cursive',
+    li:'"LiSu","STLiti","隶书","Kaiti SC",serif',
+    song:'"Songti SC","SimSun","宋体","STSong",serif',
+    hei:'"PingFang SC","Heiti SC","SimHei","黑体","Microsoft YaHei",sans-serif'
+  };
+  var state = {
+    source:'level1', override:null, custom:'',
+    grid:'tian', mode:'trace', font:'kai', cols:10, repeat:2, fs:60,
+    paper:'landscape', title:'KK 字帖',
+    pyOn:true, strokeMin:null, strokeMax:null
+  };
+  var pyCache={}, strokeCache={};
+
+  /* ---------- 工具 ---------- */
+  function isCJK(ch){
+    var c = ch.codePointAt(0);
+    return (c>=0x3400&&c<=0x9fff)||(c>=0xf900&&c<=0xfaff)||
+           (c>=0x20000&&c<=0x2ffff)||(c>=0x2e80&&c<=0x2fff)||
+           (c>=0x3000&&c<=0x303f); // 含 〇 等符号区
+  }
+  function extractChars(str){
+    var seen={}, out=[];
+    for(var i=0;i<str.length;i++){
+      var ch=str[i];
+      if(isCJK(ch)&&!seen[ch]){ seen[ch]=1; out.push(ch); }
+    }
+    return out;
+  }
+  // 基础字表（来源 + 笔画筛选），忽略 override
+  function baseList(){
+    var base = (state.source==='custom') ? extractChars(state.custom)
+                                        : (D[state.source]||'').split('');
+    if(state.strokeMin!=null || state.strokeMax!=null){
+      var lo = state.strokeMin==null?0:state.strokeMin;
+      var hi = state.strokeMax==null?999:state.strokeMax;
+      base = base.filter(function(ch){
+        var s=getStroke(ch);
+        if(s==null) return true; // 查不到笔画数的字保留
+        return s>=lo && s<=hi;
+      });
+    }
+    return base;
+  }
+  function sourceList(){
+    if(state.override) return state.override;
+    return baseList();
+  }
+  function sample(arr,n){
+    var pool=arr.slice(), out=[];
+    n=Math.min(n,pool.length);
+    for(var i=0;i<n;i++){
+      var j=Math.floor(Math.random()*(pool.length-i));
+      out.push(pool[j]); pool[j]=pool[pool.length-i-1]; pool[pool.length-i-1]=out[out.length-1];
+    }
+    return out;
+  }
+
+  /* ---------- 拼音 / 笔画（cnchar，需联网加载，失败则降级） ---------- */
+  function getPy(ch){
+    if(pyCache[ch]!==undefined) return pyCache[ch];
+    var r='';
+    try{ if(window.cnchar){ var a=window.cnchar.spell(ch,'array','tone'); if(a&&a[0]) r=a[0].toLowerCase(); } }catch(e){}
+    pyCache[ch]=r; return r;
+  }
+  function getStroke(ch){
+    if(strokeCache[ch]!==undefined) return strokeCache[ch];
+    var r=null;
+    try{ if(window.cnchar){ var a=window.cnchar.stroke(ch,'array'); if(a&&a[0]!=null&&!isNaN(a[0])) r=a[0]; } }catch(e){}
+    strokeCache[ch]=r; return r;
+  }
+
+  /* ---------- 格线 SVG（田字格 / 米字格） ---------- */
+  function bg(svg){
+    return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';
+  }
+  var line='<line x1="30" y1="0" x2="30" y2="60" stroke="#c9d3e0" stroke-width="1" stroke-dasharray="4 3"/>'+
+           '<line x1="0" y1="30" x2="60" y2="30" stroke="#c9d3e0" stroke-width="1" stroke-dasharray="4 3"/>';
+  var svgTian='<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">'+line+'</svg>';
+  var svgMi='<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">'+line+
+            '<line x1="0" y1="0" x2="60" y2="60" stroke="#c9d3e0" stroke-width="1" stroke-dasharray="4 3"/>'+
+            '<line x1="60" y1="0" x2="0" y2="60" stroke="#c9d3e0" stroke-width="1" stroke-dasharray="4 3"/></svg>';
+  document.getElementById('gridStyle').textContent =
+    '.cell.tian{background-image:'+bg(svgTian)+'}'+
+    '.cell.mi{background-image:'+bg(svgMi)+'}';
+
+  /* ---------- 每页行数（A4 比例估算） ---------- */
+  function rowsPerPage(){
+    var usableW = state.paper==='landscape'?273:186;
+    var usableH = state.paper==='landscape'?170:257;
+    var cell = usableW/state.cols;
+    return Math.max(1, Math.floor(usableH/cell));
+  }
+
+  /* ---------- 渲染（分页：每页一张 .sheet） ---------- */
+  function charSpan(ch){
+    var s=document.createElement('span'); s.className='char'; s.textContent=ch; return s;
+  }
+  function render(){
+    var chars=sourceList();
+    var container=document.getElementById('sheets');
+    container.innerHTML='';
+    document.documentElement.style.setProperty('--fs', state.fs+'px');
+    document.documentElement.style.setProperty('--kai', FONTS[state.font]||FONTS.kai);
+
+    var cells=[];
+    chars.forEach(function(ch){
+      for(var i=0;i<state.repeat;i++) cells.push({ch:ch,first:i===0});
+    });
+    var cols=state.cols, perPage=cols*rowsPerPage(), pages=Math.max(1,Math.ceil(cells.length/perPage));
+    var d=new Date();
+    var dateStr=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+
+    for(var p=0;p<pages;p++){
+      var sheet=document.createElement('div');
+      sheet.className='sheet'+(state.paper==='landscape'?' land':'');
+      sheet.style.setProperty('--cols', cols);
+      var head=document.createElement('div'); head.className='sheet-head';
+      var title=document.createElement('span'); title.className='sheet-title'; title.textContent=state.title||'字帖';
+      var meta=document.createElement('span'); meta.className='sheet-meta';
+      meta.textContent = (pages>1?('第 '+(p+1)+'/'+pages+' 页 · '):'') + dateStr + ' · 共 '+chars.length+' 字';
+      head.appendChild(title); head.appendChild(meta);
+      sheet.appendChild(head);
+
+      var slice=cells.slice(p*perPage,(p+1)*perPage);
+      for(var r=0;r<slice.length;r+=cols){
+        var row=document.createElement('div'); row.className='row';
+        slice.slice(r,r+cols).forEach(function(cell){
+          var d2=document.createElement('div');
+          d2.className='cell '+state.grid;
+          if(state.mode==='trace'){ d2.classList.add('trace'); d2.appendChild(charSpan(cell.ch)); }
+          else if(state.mode==='model'){ if(cell.first){ d2.classList.add('ink'); d2.appendChild(charSpan(cell.ch)); } }
+          if(state.pyOn){
+            var py=getPy(cell.ch);
+            if(py){ var ps=document.createElement('span'); ps.className='py'; ps.textContent=py; d2.appendChild(ps); }
+          }
+          if(d2.querySelector('.char')){
+            d2.classList.add('click');
+            d2.addEventListener('click',(function(c){return function(){openStroke(c);};})(cell.ch));
+          }
+          row.appendChild(d2);
+        });
+        sheet.appendChild(row);
+      }
+      container.appendChild(sheet);
+    }
+
+    // 状态栏
+    var srcSize = state.override? state.override.length : baseList().length;
+    var filt = (state.strokeMin!=null||state.strokeMax!=null)
+      ? (' · 笔画 '+ (state.strokeMin==null?'?':state.strokeMin) +'–'+ (state.strokeMax==null?'?':state.strokeMax)
+         + (window.cnchar?'':' (需联网加载 cnchar)')) : '';
+    document.getElementById('stat').textContent=
+      '来源 '+srcSize+' 字'+filt+' · '+cells.length+' 格 · '+pages+' 页';
+  }
+
+  /* ---------- 分组按钮绑定 ---------- */
+  function bind(segId,key,after){
+    var seg=document.getElementById(segId);
+    seg.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click',function(){
+        seg.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active');
+        var v=b.dataset.val;
+        state[key]=(key==='cols'||key==='repeat')?parseInt(v,10):v;
+        if(after) after(v);
+        render();
+      });
+    });
+  }
+  bind('srcSeg','source',function(v){
+    state.override=null;
+    document.getElementById('customWrap').style.display=(v==='custom')?'block':'none';
+  });
+  bind('gridSeg','grid');
+  bind('modeSeg','mode');
+  bind('fontSeg','font');
+  bind('colsSeg','cols');
+  bind('repSeg','repeat');
+  bind('paperSeg','paper');
+  bind('pySeg','pyOn',function(v){ state.pyOn=(v==='on'); });
+
+  /* ---------- 自定义 / 随机 ---------- */
+  document.getElementById('customApply').addEventListener('click',function(){
+    state.custom=document.getElementById('customText').value||'';
+    state.override=extractChars(state.custom);
+    document.querySelectorAll('#srcSeg button').forEach(function(x){x.classList.remove('active');});
+    document.querySelector('#srcSeg button[data-val="custom"]').classList.add('active');
+    state.source='custom';
+    render();
+  });
+  function drawRandom(){
+    var n=parseInt(document.getElementById('randN').value,10);
+    if(!n||n<1){ document.getElementById('randHint').textContent='请输入有效字数'; return; }
+    var pool=baseList();
+    state.override=sample(pool, n);
+    document.getElementById('randHint').textContent='已从 '+pool.length+' 字中抽取 '+state.override.length+' 字';
+    render();
+  }
+  document.getElementById('randBtn').addEventListener('click',drawRandom);
+  document.getElementById('fsRange').addEventListener('input',function(e){
+    state.fs=parseInt(e.target.value,10);
+    document.getElementById('fsVal').textContent=state.fs+'px';
+    document.documentElement.style.setProperty('--fs',state.fs+'px');
+  });
+  document.getElementById('titleInput').addEventListener('input',function(e){
+    state.title=e.target.value; render();
+  });
+
+  /* ---------- 笔画筛选 ---------- */
+  function applyStroke(){
+    var a=document.getElementById('strokeMin').value, b=document.getElementById('strokeMax').value;
+    state.strokeMin = a? parseInt(a,10):null;
+    state.strokeMax = b? parseInt(b,10):null;
+    if(state.strokeMin!=null && state.strokeMax!=null && state.strokeMin>state.strokeMax){
+      var t=state.strokeMin; state.strokeMin=state.strokeMax; state.strokeMax=t;
+      document.getElementById('strokeMin').value=state.strokeMin;
+      document.getElementById('strokeMax').value=state.strokeMax;
+    }
+    render();
+  }
+  document.getElementById('strokeMin').addEventListener('change',applyStroke);
+  document.getElementById('strokeMax').addEventListener('change',applyStroke);
+  document.getElementById('strokeClear').addEventListener('click',function(){
+    state.strokeMin=null; state.strokeMax=null;
+    document.getElementById('strokeMin').value='';
+    document.getElementById('strokeMax').value='';
+    render();
+  });
+
+  /* ---------- 打印 / 重置 ---------- */
+  document.getElementById('printBtn').addEventListener('click',function(){ window.print(); });
+  document.getElementById('resetBtn').addEventListener('click',function(){
+    state={source:'level1',override:null,custom:'',grid:'tian',mode:'trace',font:'kai',cols:10,repeat:2,fs:60,
+           paper:'landscape',title:'KK 字帖',pyOn:true,strokeMin:null,strokeMax:null};
+    document.getElementById('customText').value='';
+    document.getElementById('titleInput').value=state.title;
+    document.getElementById('fsRange').value=60; document.getElementById('fsVal').textContent='60px';
+    document.getElementById('strokeMin').value=''; document.getElementById('strokeMax').value='';
+    document.getElementById('randN').value=20; document.getElementById('randHint').textContent='从来源中按输入字数随机抽取';
+    ['srcSeg','gridSeg','modeSeg','fontSeg','colsSeg','repSeg','paperSeg','pySeg'].forEach(function(id){
+      var seg=document.getElementById(id);
+      seg.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+      var def={srcSeg:'level1',gridSeg:'tian',modeSeg:'trace',fontSeg:'kai',colsSeg:'10',repSeg:'2',paperSeg:'landscape',pySeg:'on'}[id];
+      var el=seg.querySelector('button[data-val="'+def+'"]'); if(el) el.classList.add('active');
+    });
+    document.getElementById('customWrap').style.display='none';
+    drawRandom();
+  });
+
+  /* ---------- 笔顺演示（Hanzi Writer，MIT，CDN 加载） ---------- */
+  var loopOn=false, fallbackTimer=null;
+  function fallback(ch){
+    var t=document.getElementById('hwTarget');
+    t.innerHTML='<div style="font-family:var(--kai);font-size:120px;color:#23211c">'+ch+'</div>'+
+      '<p style="color:#999;font-size:12px">离线环境未加载笔顺动画库（需联网加载 Hanzi Writer）</p>';
+  }
+  function openStroke(ch){
+    var mask=document.getElementById('strokeMask'); mask.classList.add('show');
+    document.getElementById('strokeTitle').textContent='笔顺 · '+ch;
+    var t=document.getElementById('hwTarget'); t.innerHTML='';
+    loopOn=false;
+    if(window.HanziWriter){
+      try{
+        var hw=HanziWriter.create(t,ch,{width:260,height:260,padding:14,
+          showOutline:true,strokeColor:'#23211c',radicalColor:'#c0392b',delayBetweenStrokes:260});
+        var play=function(){ try{hw.animateCharacter();}catch(e){} };
+        play();
+        document.getElementById('hwPlay').onclick=play;
+        window.__hwloop=function(){
+          if(!loopOn) return;
+          play();
+          fallbackTimer=setTimeout(window.__hwloop,2800);
+        };
+        return;
+      }catch(e){ /* fall through */ }
+    }
+    fallback(ch);
+    document.getElementById('hwPlay').onclick=function(){};
+  }
+  document.getElementById('hwLoop').addEventListener('click',function(){
+    loopOn=!loopOn;
+    this.textContent=loopOn?'⏸ 停止':'↻ 循环';
+    if(loopOn){ if(fallbackTimer) clearTimeout(fallbackTimer); window.__hwloop&&window.__hwloop(); }
+    else if(fallbackTimer){ clearTimeout(fallbackTimer); }
+  });
+  function closeStroke(){
+    document.getElementById('strokeMask').classList.remove('show');
+    document.getElementById('hwTarget').innerHTML='';
+    loopOn=false; document.getElementById('hwLoop').textContent='↻ 循环';
+    if(fallbackTimer){ clearTimeout(fallbackTimer); fallbackTimer=null; }
+  }
+  document.getElementById('hwClose').addEventListener('click',closeStroke);
+  document.getElementById('strokeMask').addEventListener('click',function(e){
+    if(e.target===this) closeStroke();
+  });
+
+  /* ---------- 导出图片 / ZIP（html-to-image + JSZip，需联网加载） ---------- */
+  function sheets(){ return Array.prototype.slice.call(document.querySelectorAll('#sheets .sheet')); }
+  function fname(ext){
+    var d=new Date();
+    var s=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2)+'_'+
+          ('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);
+    return '字帖_'+s+'.'+ext;
+  }
+  function loadImg(src){
+    return new Promise(function(res,rej){
+      var i=new Image(); i.onload=function(){res(i);}; i.onerror=rej; i.src=src;
+    });
+  }
+  function download(url,name){
+    var a=document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function downloadBlob(blob,name){
+    var u=URL.createObjectURL(blob); download(u,name); setTimeout(function(){URL.revokeObjectURL(u);},2000);
+  }
+  function setExp(t){ document.getElementById('expStat').textContent=t; }
+  function nodeToPng(node){
+    if(!window.htmlToImage) throw new Error('图片库未加载(需联网)');
+    return window.htmlToImage.toPng(node,{pixelRatio:2,cacheBust:true,backgroundColor:'#fffdf6'});
+  }
+  async function saveSingle(){
+    var ss=sheets(); if(!ss.length) return;
+    setExp('生成图片中…');
+    try{
+      if(ss.length===1){ download(await nodeToPng(ss[0]), fname('png')); setExp('已保存 1 页'); }
+      else{
+        var pages=await Promise.all(ss.map(nodeToPng));
+        var imgs=await Promise.all(pages.map(loadImg));
+        var w=Math.max.apply(null,imgs.map(function(i){return i.width;}));
+        var h=imgs.reduce(function(a,i){return a+i.height;},0);
+        var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        var ctx=cv.getContext('2d'); var y=0;
+        imgs.forEach(function(i){ ctx.drawImage(i,0,y); y+=i.height; });
+        download(cv.toDataURL('image/png'), fname('png'));
+        setExp('已保存 '+ss.length+' 页拼接图');
+      }
+    }catch(e){ setExp('导出失败：'+e.message); }
+  }
+  async function saveZip(){
+    var ss=sheets(); if(!ss.length) return;
+    if(!window.JSZip){ setExp('ZIP 库未加载(需联网)'); return; }
+    setExp('导出 ZIP 中… 0/'+ss.length);
+    try{
+      var zip=new JSZip();
+      for(var i=0;i<ss.length;i++){
+        try{ var url=await nodeToPng(ss[i]); zip.file(('0'+(i+1)).slice(-2)+'.png', url.split(',')[1], {base64:true}); }
+        catch(e){}
+        setExp('导出 ZIP 中… '+(i+1)+'/'+ss.length);
+      }
+      var blob=await zip.generateAsync({type:'blob'});
+      downloadBlob(blob, fname('zip'));
+      setExp('已导出 ZIP（'+ss.length+' 页）');
+    }catch(e){ setExp('导出失败：'+e.message); }
+  }
+  document.getElementById('saveImg').addEventListener('click',saveSingle);
+  document.getElementById('saveZip').addEventListener('click',saveZip);
+
+  /* ---------- 初始化 ---------- */
+  drawRandom();
+  // cnchar 异步加载完成后，若已启用拼音/笔画筛选则重渲染以补全数据
+  window.onCnReady=function(){ pyCache={}; strokeCache={}; if(state.pyOn || state.strokeMin!=null || state.strokeMax!=null) render(); };
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/cnchar@3.2.6/cnchar.min.js" async onload="window.onCnReady&&window.onCnReady()"></script>
+<script src="https://cdn.jsdelivr.net/npm/cnchar-poly@3.2.6/cnchar.poly.min.js" async onload="window.onCnReady&&window.onCnReady()"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5.0/dist/hanzi-writer.min.js" async></script>
+</body>
+</html>
